@@ -16,8 +16,7 @@ const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:3000',
     'http://localhost:5174',
-    'https://app-showpay.vercel.app',
-    'https://app-showpayco.vercel.app', // Handle typo if exists
+    'https://app-showpayco.vercel.app', // Production frontend URL
     process.env.FRONTEND_URL
 ].filter(Boolean); // Remove any undefined values
 

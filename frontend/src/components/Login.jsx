@@ -6,97 +6,27 @@ const Login = () => {
     const [password, setPassword] = useState('');
     const [showActivationModal, setShowActivationModal] = useState(false);
     
-    // Environment variables
-    const IS_PRODUCTION = import.meta.env.VITE_IS_PRODUCTION === 'true' || import.meta.env.VITE_IS_PRODUCTION === true;
-    
-    // Check if we're on the deployed frontend
-    const isDeployedFrontend = window.location.hostname.includes('vercel.app') || 
-                                window.location.hostname.includes('app-showpay');
-    
-    // Determine API URL
-    let API_URL;
-    if (isDeployedFrontend) {
-        // If deployed on Vercel, we MUST use a deployed backend URL (not localhost)
-        API_URL = import.meta.env.VITE_API_URL;
-        if (!API_URL || API_URL.includes('localhost') || API_URL.includes('127.0.0.1')) {
-            console.error('ERROR: VITE_API_URL must be set to a deployed backend URL when frontend is deployed!');
-            API_URL = null; // Will show error to user
-        }
-    } else {
-        // Local development - use localhost backend
-        if (!IS_PRODUCTION) {
-            API_URL = 'http://localhost:3001';
-        } else {
-            // Production mode but running locally - use VITE_API_URL if set
-            const envApiUrl = import.meta.env.VITE_API_URL;
-            // Prevent using frontend URL as API URL
-            if (envApiUrl && !envApiUrl.includes('app-showpay.vercel.app') && !envApiUrl.includes('localhost:5173')) {
-                API_URL = envApiUrl;
-            } else {
-                API_URL = 'http://localhost:3001';
-            }
-        }
-    }
-    
-    // Final safeguard: never use frontend URL as API URL
-    if (API_URL && (API_URL.includes('app-showpay.vercel.app') || API_URL.includes('localhost:5173'))) {
-        console.warn('Invalid API URL detected (frontend URL), using localhost:3001 instead');
-        if (!isDeployedFrontend) {
-            API_URL = 'http://localhost:3001';
-        } else {
-            API_URL = null; // Will show error
-        }
-    }
-    
-    console.log('API URL:', API_URL, 'IS_PRODUCTION:', IS_PRODUCTION, 'isDeployedFrontend:', isDeployedFrontend);
+    // Simple API URL: use env variable if available, otherwise default to localhost:8080
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
     const handleSubmit = (event) => {
         event.preventDefault();
         
-        // Clear previous errors
         const submitButton = event.target.querySelector('button[type="submit"]');
         const originalText = submitButton.textContent;
         submitButton.disabled = true;
         submitButton.textContent = 'Logging in...';
-    
-        
-        // Validate API URL before making request
-        if (!API_URL) {
-            console.error('Invalid API URL:', API_URL);
-            alert('Backend API URL is not configured. Please set VITE_API_URL environment variable to your deployed backend URL.');
-            submitButton.disabled = false;
-            submitButton.textContent = originalText;
-            return;
-        }
-        
-        if (isDeployedFrontend && (API_URL.includes('localhost') || API_URL.includes('127.0.0.1'))) {
-            console.error('Invalid API URL for deployed frontend:', API_URL);
-            alert('Cannot use localhost backend from deployed frontend. Please set VITE_API_URL to your deployed backend URL in Vercel environment variables.');
-            submitButton.disabled = false;
-            submitButton.textContent = originalText;
-            return;
-        }
-        
-        console.log('API URL:', API_URL, 'IS_PRODUCTION:', IS_PRODUCTION);
         
         axios.post(`${API_URL}/login`, {phoneNumber, password})
         .then(result => {
             if(result.data.success){
-                // Show activation modal on successful login
                 setShowActivationModal(true);
-                // Reset form
                 setPhoneNumber('');
                 setPassword('');
             }
         })
         .catch(err => {
             console.error('Login error:', err);
-            // Log the full error for debugging
-            if (err.response) {
-                console.error('Response error:', err.response.status, err.response.data);
-            } else if (err.request) {
-                console.error('Request error:', err.request);
-            }
         })
         .finally(() => {
             submitButton.disabled = false;
