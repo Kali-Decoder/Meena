@@ -11,54 +11,23 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(express.json());
 
-// CORS configuration - allow both development and production frontend URLs
-const allowedOrigins = [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'http://localhost:5174',
-    'https://app-showpayco.vercel.app', // Production frontend URL
-    process.env.FRONTEND_URL
-].filter(Boolean); // Remove any undefined values
-
-app.use(cors({
-    origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) return callback(null, true);
-        
-        // Normalize origin (remove trailing slash)
-        const normalizedOrigin = origin.replace(/\/$/, '');
-        const normalizedAllowed = allowedOrigins.map(o => o ? o.replace(/\/$/, '') : o);
-        
-        if (normalizedAllowed.indexOf(normalizedOrigin) !== -1 || 
-            normalizedAllowed.some(allowed => normalizedOrigin.includes(allowed.replace('https://', '').replace('http://', ''))) ||
-            process.env.FRONTEND_URL === '*') {
-            callback(null, true);
-        } else {
-            // In development, allow all origins
-            if (process.env.NODE_ENV !== 'production') {
-                callback(null, true);
-            } else {
-                console.log('CORS blocked origin:', origin);
-                callback(new Error('Not allowed by CORS'));
-            }
-        }
-    },
+// CORS configuration
+const corsOptions = {
+    origin: true, // This will enable CORS for all origins
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+};
+
+app.use(cors(corsOptions));
 
 
 connDB();
 
 // Wait for database connection before handling requests
 mongoose.connection.on('connected', () => {
-  dbConnected = true;
   console.log('Database connected successfully');
 });
 
 mongoose.connection.on('error', (err) => {
-  dbConnected = false;
   console.error('Database connection error:', err);
 });
 
@@ -68,14 +37,24 @@ app.get('/health', (req, res) => {
 });
 
 // Login endpoint
-app.post('/login', (req, res)=>{
+app.post('/login', async (req, res)=>{
     try {
-      
-        if (mongoose.connection.readyState !== 1) {
-            return res.status(503).json({ 
-                success: false,
-                message: 'Database connection not available. Please try again later.' 
+        // In serverless, ensure connection is established
+        if (mongoose.connection.readyState === 0) {
+            // Connection not started, try to connect
+            await mongoose.connect(process.env.MONGO_DB_CONN_STRING, {
+                useNewUrlParser: true,
+                useUnifiedTopology: true,
             });
+        } else if (mongoose.connection.readyState !== 1) {
+            // Connection in progress or disconnected, wait a bit and check again
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            if (mongoose.connection.readyState !== 1) {
+                return res.status(503).json({ 
+                    success: false,
+                    message: 'Database connection not available. Please try again later.' 
+                });
+            }
         }
 
         const {phoneNumber, password} = req.body;
@@ -137,6 +116,12 @@ app.use((req, res) => {
     res.status(404).json({ error: 'Route not found' });
 });
 
-app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
-});
+// Export the app for Vercel serverless functions
+// Only use app.listen() in local development (not on Vercel)
+if (!process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log(`Server listening on port ${PORT}`);
+    });
+}
+
+module.exports = app;
