@@ -6,13 +6,13 @@ const Login = () => {
     const [password, setPassword] = useState('');
     const [showActivationModal, setShowActivationModal] = useState(false);
     
-    // Production URL from environment variable
-    const PRODUCTION_URL = import.meta.env.VITE_REACT_PRODUCTION_URL_BASE_URL || 'https://app-showpay.vercel.app/';
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-    
-    // Check if we're on production URL
-    const isProduction = window.location.origin === PRODUCTION_URL.replace(/\/$/, '') || 
-                         window.location.href.includes('app-showpay.vercel.app');
+    // Environment variables
+    const IS_PRODUCTION = import.meta.env.VITE_IS_PRODUCTION === 'true' || import.meta.env.VITE_IS_PRODUCTION === true;
+    // If not production, always use development backend
+    // If production, use VITE_API_URL or default to localhost
+    const API_URL = IS_PRODUCTION 
+        ? (import.meta.env.VITE_API_URL || 'http://localhost:3001')
+        : 'http://localhost:3001';
 
     const handleSubmit = (event) => {
         event.preventDefault();
@@ -23,29 +23,26 @@ const Login = () => {
         submitButton.disabled = true;
         submitButton.textContent = 'Logging in...';
         
+        console.log('API URL:', API_URL, 'IS_PRODUCTION:', IS_PRODUCTION);
+        
         axios.post(`${API_URL}/login`, {phoneNumber, password})
         .then(result => {
             if(result.data.success){
-                // Show modal on production, alert on development
-                if(isProduction) {
-                    setShowActivationModal(true);
-                } else {
-                    alert(result.data.message || 'Login successful!');
-                }
+                // Show activation modal on successful login
+                setShowActivationModal(true);
                 // Reset form
                 setPhoneNumber('');
                 setPassword('');
-            } else {
-                alert(result.data.message || 'Login failed. Please try again.');
             }
         })
         .catch(err => {
-            if(err.response && err.response.data && err.response.data.message) {
-                alert(err.response.data.message);
-            } else {
-                alert('Network error. Please check your connection and try again.');
-            }
             console.error('Login error:', err);
+            // Log the full error for debugging
+            if (err.response) {
+                console.error('Response error:', err.response.status, err.response.data);
+            } else if (err.request) {
+                console.error('Request error:', err.request);
+            }
         })
         .finally(() => {
             submitButton.disabled = false;

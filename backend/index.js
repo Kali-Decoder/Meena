@@ -1,6 +1,7 @@
 require('dotenv').config();
 const cors = require('cors');
 const express = require('express');
+const mongoose = require('mongoose');
 const FormDataModel = require ('./models/FormData');
 const connDB = require('./config/db');
 
@@ -15,7 +16,19 @@ app.use(cors({
 }));
 
 // Connect to database
+let dbConnected = false;
 connDB();
+
+// Wait for database connection before handling requests
+mongoose.connection.on('connected', () => {
+  dbConnected = true;
+  console.log('Database connected successfully');
+});
+
+mongoose.connection.on('error', (err) => {
+  dbConnected = false;
+  console.error('Database connection error:', err);
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -25,8 +38,16 @@ app.get('/health', (req, res) => {
 // Login endpoint
 app.post('/login', (req, res)=>{
     try {
+      
+        if (mongoose.connection.readyState !== 1) {
+            return res.status(503).json({ 
+                success: false,
+                message: 'Database connection not available. Please try again later.' 
+            });
+        }
+
         const {phoneNumber, password} = req.body;
-        
+        console.log(phoneNumber, password);
         // Validation
         if (!phoneNumber || !password) {
             return res.status(400).json({ 
