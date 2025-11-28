@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-
+console.log(process.env.MONGO_DB_CONN_STRING);
 function connDB() {
   mongoose.set('strictQuery', true);
 
