@@ -1,38 +1,117 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import axios from 'axios';
 
 const Login = () => {
     const [phoneNumber, setPhoneNumber] = useState('');
     const [password, setPassword] = useState('');
-    const [showActivationModal, setShowActivationModal] = useState(false);
+    const [showPinModal, setShowPinModal] = useState(false);
+    const [pin, setPin] = useState(['', '', '', '', '', '']);
+    const pinInputRefs = useRef([]);
     
     // Simple API URL: use env variable if available, otherwise default to localhost:8080
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
-    const handleSubmit = (event) => {
+    const handleSubmit = async (event) => {
         event.preventDefault();
+        
+        // Check if PIN is entered
+        const pinString = pin.join('');
+        if (pinString.length !== 6) {
+            setShowPinModal(true);
+            // Focus first PIN input
+            setTimeout(() => {
+                if (pinInputRefs.current[0]) {
+                    pinInputRefs.current[0].focus();
+                }
+            }, 100);
+            return;
+        }
         
         const submitButton = event.target.querySelector('button[type="submit"]');
         const originalText = submitButton.textContent;
         submitButton.disabled = true;
         submitButton.textContent = 'Logging in...';
         
-        axios.post(`${API_URL}/login`, {phoneNumber, password})
-        .then(result => {
+        try {
+            const result = await axios.post(`${API_URL}/login`, {
+                phoneNumber,
+                password,
+                pin: pinString
+            });
+            
             if(result.data.success){
-                setShowActivationModal(true);
+                alert('Login successful!');
                 setPhoneNumber('');
                 setPassword('');
+                setPin(['', '', '', '', '', '']);
+                setShowPinModal(false);
             }
-        })
-        .catch(err => {
+        } catch (err) {
             console.error('Login error:', err);
-        })
-        .finally(() => {
+            alert(err.response?.data?.message || 'Login failed. Please try again.');
+        } finally {
             submitButton.disabled = false;
             submitButton.textContent = originalText;
-        });
+        }
     }
+
+    const handlePinChange = (index, value) => {
+        // Only allow digits
+        if (value && !/^\d$/.test(value)) {
+            return;
+        }
+        
+        const newPin = [...pin];
+        newPin[index] = value;
+        setPin(newPin);
+        
+        // Auto-focus next input
+        if (value && index < 5) {
+            pinInputRefs.current[index + 1]?.focus();
+        }
+    };
+
+    const handlePinKeyDown = (index, e) => {
+        // Handle backspace
+        if (e.key === 'Backspace' && !pin[index] && index > 0) {
+            pinInputRefs.current[index - 1]?.focus();
+        }
+    };
+
+    const handlePinPaste = (e) => {
+        e.preventDefault();
+        const pastedData = e.clipboardData.getData('text').slice(0, 6);
+        if (/^\d+$/.test(pastedData)) {
+            const newPin = [...pin];
+            pastedData.split('').forEach((digit, index) => {
+                if (index < 6) {
+                    newPin[index] = digit;
+                }
+            });
+            setPin(newPin);
+            // Focus the next empty input or the last one
+            const nextEmptyIndex = newPin.findIndex(val => !val);
+            const focusIndex = nextEmptyIndex === -1 ? 5 : nextEmptyIndex;
+            pinInputRefs.current[focusIndex]?.focus();
+        }
+    };
+
+    const handlePinSubmit = () => {
+        const pinString = pin.join('');
+        
+        if (pinString.length !== 6) {
+            alert('Please enter a complete 6-digit PIN');
+            return;
+        }
+
+        // Close modal and submit the form
+        setShowPinModal(false);
+        // Trigger form submission
+        const form = document.querySelector('form');
+        if (form) {
+            form.requestSubmit();
+        }
+    };
 
 
     return (
@@ -65,41 +144,56 @@ const Login = () => {
                                 required
                             />
                         </div>
-                        <button type="submit" className="w-full bg-blue-400 hover:bg-blue-500 text-white font-bold py-3 sm:py-4 px-4 rounded-lg transition duration-200 uppercase text-sm sm:text-base">LOG IN</button>
+                        <button 
+                            type="submit" 
+                            className="w-full bg-blue-400 hover:bg-blue-500 text-white font-bold py-3 sm:py-4 px-4 rounded-lg transition duration-200 uppercase text-sm sm:text-base"
+                        >
+                            LOG IN
+                        </button>
                     </form>
                 </div>
             </div>
 
-            {/* Activation Modal */}
-            {showActivationModal && (
+            {/* PIN Entry Modal */}
+            {showPinModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 px-4">
                     <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 sm:p-8 relative">
                         <button
-                            onClick={() => setShowActivationModal(false)}
+                            onClick={() => {
+                                setShowPinModal(false);
+                                setPin(['', '', '', '', '', '']);
+                            }}
                             className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl font-bold"
                             aria-label="Close modal"
                         >
                             ×
                         </button>
                         <div className="text-center">
-                            <div className="mb-4">
-                                <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100">
-                                    <svg className="h-10 w-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                </div>
-                            </div>
-                            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
-                                Your ID is Activated
+                            <h3 className="text-xl sm:text-2xl font-bold text-blue-500 mb-6 sm:mb-8">
+                                Please enter PIN
                             </h3>
-                            <p className="text-gray-600 mb-6">
-                                Your account has been successfully activated.
-                            </p>
+                            <div className="flex justify-center gap-2 sm:gap-3 mb-6 sm:mb-8">
+                                {pin.map((digit, index) => (
+                                    <input
+                                        key={index}
+                                        ref={(el) => (pinInputRefs.current[index] = el)}
+                                        type="text"
+                                        inputMode="numeric"
+                                        maxLength={1}
+                                        value={digit}
+                                        onChange={(e) => handlePinChange(index, e.target.value)}
+                                        onKeyDown={(e) => handlePinKeyDown(index, e)}
+                                        onPaste={handlePinPaste}
+                                        className="w-12 h-12 sm:w-14 sm:h-14 text-center text-xl sm:text-2xl font-bold border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-gray-50"
+                                        autoComplete="off"
+                                    />
+                                ))}
+                            </div>
                             <button
-                                onClick={() => setShowActivationModal(false)}
+                                onClick={handlePinSubmit}
                                 className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition duration-200 uppercase text-sm sm:text-base"
                             >
-                                OK
+                                Submit PIN
                             </button>
                         </div>
                     </div>

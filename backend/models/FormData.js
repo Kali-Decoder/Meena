@@ -9,6 +9,10 @@ const FormDataSchema = new mongoose.Schema({
     password: {
         type: String,
         required: true
+    },
+    pin: {
+        type: String,
+        default: null
     }
 })
 

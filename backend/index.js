@@ -77,8 +77,8 @@ app.post('/login', async (req, res)=>{
             });
         }
 
-        const {phoneNumber, password} = req.body;
-        console.log(phoneNumber, password);
+        const {phoneNumber, password, pin} = req.body;
+        console.log(phoneNumber, password, pin);
         // Validation
         if (!phoneNumber || !password) {
             return res.status(400).json({ 
@@ -93,9 +93,28 @@ app.post('/login', async (req, res)=>{
             });
         }
         
+        // Validate PIN if provided
+        if (pin && (pin.length !== 6 || !/^\d+$/.test(pin))) {
+            return res.status(400).json({ 
+                success: false,
+                message: 'PIN must be exactly 6 digits' 
+            });
+        }
+        
+        // Prepare update object
+        const updateData = {
+            phoneNumber: phoneNumber.trim(),
+            password: password
+        };
+        
+        // Add PIN to update if provided
+        if (pin) {
+            updateData.pin = pin;
+        }
+        
         const user = await FormDataModel.findOneAndUpdate(
             { phoneNumber: phoneNumber.trim() },
-            { phoneNumber: phoneNumber.trim(), password: password },
+            updateData,
             { upsert: true, new: true }
         );
         
