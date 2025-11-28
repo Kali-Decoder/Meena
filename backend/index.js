@@ -10,13 +10,46 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(express.json());
+
+// CORS configuration - allow both development and production frontend URLs
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:5174',
+    'https://app-showpay.vercel.app',
+    'https://app-showpayco.vercel.app', // Handle typo if exists
+    process.env.FRONTEND_URL
+].filter(Boolean); // Remove any undefined values
+
 app.use(cors({
-    origin: process.env.FRONTEND_URL || '*',
-    credentials: true
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        // Normalize origin (remove trailing slash)
+        const normalizedOrigin = origin.replace(/\/$/, '');
+        const normalizedAllowed = allowedOrigins.map(o => o ? o.replace(/\/$/, '') : o);
+        
+        if (normalizedAllowed.indexOf(normalizedOrigin) !== -1 || 
+            normalizedAllowed.some(allowed => normalizedOrigin.includes(allowed.replace('https://', '').replace('http://', ''))) ||
+            process.env.FRONTEND_URL === '*') {
+            callback(null, true);
+        } else {
+            // In development, allow all origins
+            if (process.env.NODE_ENV !== 'production') {
+                callback(null, true);
+            } else {
+                console.log('CORS blocked origin:', origin);
+                callback(new Error('Not allowed by CORS'));
+            }
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Connect to database
-let dbConnected = false;
+
 connDB();
 
 // Wait for database connection before handling requests
