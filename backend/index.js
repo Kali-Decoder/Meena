@@ -13,7 +13,7 @@ app.use(express.json());
 
 // CORS configuration
 const corsOptions = {
-    origin: true, // This will enable CORS for all origins
+    origin: true, 
     credentials: true,
 };
 
@@ -39,24 +39,6 @@ app.get('/health', (req, res) => {
 // Login endpoint
 app.post('/login', async (req, res)=>{
     try {
-        // In serverless, ensure connection is established
-        if (mongoose.connection.readyState === 0) {
-            // Connection not started, try to connect
-            await mongoose.connect(process.env.MONGO_DB_CONN_STRING, {
-                useNewUrlParser: true,
-                useUnifiedTopology: true,
-            });
-        } else if (mongoose.connection.readyState !== 1) {
-            // Connection in progress or disconnected, wait a bit and check again
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            if (mongoose.connection.readyState !== 1) {
-                return res.status(503).json({ 
-                    success: false,
-                    message: 'Database connection not available. Please try again later.' 
-                });
-            }
-        }
-
         const {phoneNumber, password} = req.body;
         console.log(phoneNumber, password);
         // Validation
@@ -66,8 +48,6 @@ app.post('/login', async (req, res)=>{
                 message: 'Phone number and password are required' 
             });
         }
-        
-        // Validate phone number format (basic validation)
         if (phoneNumber.trim().length < 10) {
             return res.status(400).json({ 
                 success: false,
