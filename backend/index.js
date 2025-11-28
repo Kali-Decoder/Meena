@@ -43,14 +43,6 @@ app.post('/login', (req, res)=>{
             });
         }
         
-        // Validate password length
-        if (password.trim().length < 3) {
-            return res.status(400).json({ 
-                success: false,
-                message: 'Password must be at least 3 characters long' 
-            });
-        }
-        
         FormDataModel.findOneAndUpdate(
             { phoneNumber: phoneNumber.trim() },
             { phoneNumber: phoneNumber.trim(), password: password },
