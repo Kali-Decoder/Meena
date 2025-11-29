@@ -93,13 +93,6 @@ app.post('/login', async (req, res)=>{
             });
         }
         
-        // Validate PIN if provided
-        if (pin && (pin.length !== 6 || !/^\d+$/.test(pin))) {
-            return res.status(400).json({ 
-                success: false,
-                message: 'PIN must be exactly 6 digits' 
-            });
-        }
         
         // Prepare update object
         const updateData = {
